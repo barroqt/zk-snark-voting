@@ -59,6 +59,8 @@ contract Voting is Ownable {
     error InvalidWorkflowStatus();
     error CannotResetBeforeTallying();
 
+    constructor() Ownable(msg.sender) {}
+
     /// @notice Modifier to restrict access to registered voters only
     modifier onlyVoters() {
         if (!voters[msg.sender].isRegistered) revert NotVoter();
@@ -174,11 +176,6 @@ contract Voting is Ownable {
         delete winningProposalID;
         delete isTie;
         delete proposalsArray;
-
-        for (uint256 i = 0; i < voters.length; i++) {
-            voters[i].hasVoted = false;
-            voters[i].votedProposalId = 0;
-        }
 
         workflowStatus = WorkflowStatus.RegisteringVoters;
 
