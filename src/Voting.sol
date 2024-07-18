@@ -4,21 +4,28 @@ pragma solidity ^0.8.24;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 
+/// @title Voting Smart Contract
+/// @author [Your Name or Organization]
+/// @notice This contract manages a voting system with proposals and registered voters
+/// @dev Inherits from OpenZeppelin's Ownable contract for access control
 contract Voting is Ownable {
     uint256 public winningProposalID;
     bool public isTie;
 
+    /// @notice Structure to store voter information
     struct Voter {
         bool isRegistered;
         bool hasVoted;
         uint256 votedProposalId;
     }
 
+    /// @notice Structure to store proposal information
     struct Proposal {
         string description;
         uint256 voteCount;
     }
 
+    /// @notice Enum to represent the different stages of the voting process
     enum WorkflowStatus {
         RegisteringVoters,
         ProposalsRegistrationStarted,
@@ -32,6 +39,7 @@ contract Voting is Ownable {
     Proposal[] public proposalsArray;
     mapping(address => Voter) public voters;
 
+    // Events
     event VoterRegistered(address voterAddress);
     event WorkflowStatusChange(WorkflowStatus previousStatus, WorkflowStatus newStatus);
     event ProposalRegistered(uint256 indexed proposalId, string description);
@@ -39,6 +47,7 @@ contract Voting is Ownable {
     event VotingReset();
     event VotesTallied(uint256 winningProposalId, uint256 winningVoteCount, bool isTie);
 
+    // Errors
     error NotVoter();
     error VoterRegistrationClosed();
     error AlreadyRegistered();
@@ -50,6 +59,7 @@ contract Voting is Ownable {
     error InvalidWorkflowStatus();
     error CannotResetBeforeTallying();
 
+    /// @notice Modifier to restrict access to registered voters only
     modifier onlyVoters() {
         if (!voters[msg.sender].isRegistered) revert NotVoter();
         _;
@@ -57,16 +67,24 @@ contract Voting is Ownable {
 
     // ::::::::::::: GETTERS ::::::::::::: //
 
+    /// @notice Retrieves voter information
+    /// @param _addr The address of the voter
+    /// @return Voter struct containing voter information
     function getVoter(address _addr) external view onlyVoters returns (Voter memory) {
         return voters[_addr];
     }
 
+    /// @notice Retrieves a specific proposal
+    /// @param _id The ID of the proposal
+    /// @return Proposal struct containing proposal information
     function getOneProposal(uint256 _id) external view onlyVoters returns (Proposal memory) {
         return proposalsArray[_id];
     }
 
     // ::::::::::::: REGISTRATION ::::::::::::: //
 
+    /// @notice Adds a new voter to the system
+    /// @param _addr The address of the voter to be added
     function addVoter(address _addr) external onlyOwner {
         if (workflowStatus != WorkflowStatus.RegisteringVoters) {
             revert VoterRegistrationClosed();
@@ -81,6 +99,8 @@ contract Voting is Ownable {
 
     // ::::::::::::: PROPOSAL ::::::::::::: //
 
+    /// @notice Adds a new proposal to the system
+    /// @param _desc The description of the proposal
     function addProposal(string calldata _desc) external onlyVoters {
         if (workflowStatus != WorkflowStatus.ProposalsRegistrationStarted) {
             revert ProposalsNotAllowed();
@@ -97,6 +117,8 @@ contract Voting is Ownable {
 
     // ::::::::::::: VOTE ::::::::::::: //
 
+    /// @notice Allows a voter to cast their vote
+    /// @param _id The ID of the proposal being voted for
     function setVote(uint256 _id) external onlyVoters {
         if (workflowStatus != WorkflowStatus.VotingSessionStarted) {
             revert VotingSessionNotStarted();
@@ -115,6 +137,7 @@ contract Voting is Ownable {
         emit Voted(msg.sender, _id);
     }
 
+    /// @notice Tallies the votes and determines the winning proposal
     function tallyVotes() external onlyOwner {
         if (workflowStatus != WorkflowStatus.VotingSessionEnded) {
             revert InvalidWorkflowStatus();
@@ -124,7 +147,7 @@ contract Voting is Ownable {
         uint256 _winningProposalId;
         bool _isTie = false;
 
-        for (uint256 i = 0; p < proposalsArray.length; i++) {
+        for (uint256 i = 0; i < proposalsArray.length; i++) {
             if (proposalsArray[i].voteCount > winningVoteCount) {
                 winningVoteCount = proposalsArray[i].voteCount;
                 _winningProposalId = i;
@@ -142,6 +165,7 @@ contract Voting is Ownable {
         emit WorkflowStatusChange(WorkflowStatus.VotingSessionEnded, WorkflowStatus.VotesTallied);
     }
 
+    /// @notice Resets the voting process for a new round
     function resetVoting() external onlyOwner {
         if (workflowStatus != WorkflowStatus.VotesTallied) {
             revert CannotResetBeforeTallying();
@@ -164,6 +188,7 @@ contract Voting is Ownable {
 
     // ::::::::::::: STATE ::::::::::::: //
 
+    /// @notice Starts the proposal registration phase
     function startProposalsRegistering() external onlyOwner {
         if (workflowStatus != WorkflowStatus.RegisteringVoters) {
             revert InvalidWorkflowStatus();
@@ -177,6 +202,7 @@ contract Voting is Ownable {
         emit WorkflowStatusChange(WorkflowStatus.RegisteringVoters, WorkflowStatus.ProposalsRegistrationStarted);
     }
 
+    /// @notice Ends the proposal registration phase
     function endProposalsRegistering() external onlyOwner {
         if (workflowStatus != WorkflowStatus.ProposalsRegistrationStarted) {
             revert InvalidWorkflowStatus();
@@ -187,6 +213,7 @@ contract Voting is Ownable {
         );
     }
 
+    /// @notice Starts the voting session
     function startVotingSession() external onlyOwner {
         if (workflowStatus != WorkflowStatus.ProposalsRegistrationEnded) {
             revert InvalidWorkflowStatus();
@@ -195,6 +222,7 @@ contract Voting is Ownable {
         emit WorkflowStatusChange(WorkflowStatus.ProposalsRegistrationEnded, WorkflowStatus.VotingSessionStarted);
     }
 
+    /// @notice Ends the voting session
     function endVotingSession() external onlyOwner {
         if (workflowStatus != WorkflowStatus.VotingSessionStarted) {
             revert InvalidWorkflowStatus();
